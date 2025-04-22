@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.services.auth_service import process_login
+from fastapi.responses import RedirectResponse
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
@@ -11,7 +12,6 @@ templates = Jinja2Templates(directory="app/api/templates")
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-# 로그인 처리 (POST)
 @router.post("/login")
 async def login_submit(
     request: Request,
@@ -20,6 +20,16 @@ async def login_submit(
     department: str = Form(None),
     password: str = Form(...)
 ):
-    # 로그인 로직 호출
     result = await process_login(public_health_center, role, department, password)
-    return {"result": result}
+
+    # 로그인 성공 → 역할별 페이지 리디렉션
+    if result.get("message"):
+        if role == "doctor":
+            return RedirectResponse(url="/doctor/consultation", status_code=302)
+        elif role == "admin":
+            return RedirectResponse(url="/admin/dashboard", status_code=302)  # 아직 없음
+    else:
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": result.get("error", "로그인 실패"),
+        })
