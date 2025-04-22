@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Silmedy 로그인</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f0f4f8;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .login-container {
+      background-color: white;
+      padding: 40px 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      width: 350px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+
+    label {
+      margin-top: 15px;
+      display: block;
+      color: #333;
+      font-weight: 500;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      margin-top: 25px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1e6fa1;
+    }
+
+    #departmentField {
+      display: none;
+    }
+  </style>
+  <script>
+    // 역할 선택 시 진료과 입력란 표시/숨김
+    function onRoleChange() {
+      const role = document.getElementById("role").value;
+      document.getElementById("departmentField").style.display = role === "doctor" ? "block" : "none";
+    }
+  </script>
+</head>
+<body>
+  <div class="login-container">
+    <h2>Silmedy 로그인</h2>
+    <form action="/login" method="post">
+      <label for="public_health_center">보건소</label>
+      <input type="text" name="public_health_center" id="public_health_center" placeholder="보건소 이름 입력" list="phc_list" required />
+      <datalist id="phc_list">
+        <option value="강남보건소">
+        <option value="서초보건소">
+      </datalist>
+
+      <label for="role">구분</label>
+      <select name="role" id="role" onchange="onRoleChange()" required>
+        <option value="">선택</option>
+        <option value="admin">관리자</option>
+        <option value="doctor">의사</option>
+      </select>
+
+      <div id="departmentField">
+        <label for="department">진료과</label>
+        <select name="department" id="department">
+          <option value="내과">내과</option>
+          <option value="소아과">소아과</option>
+          <option value="정형외과">정형외과</option>
+        </select>
+      </div>
+
+      <label for="password">비밀번호</label>
+      <input type="password" name="password" id="password" required />
+
+      <button type="submit">로그인</button>
+    </form>
+  </div>
+</body>
+</html>

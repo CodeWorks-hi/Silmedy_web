@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 환경변수 및 시크릿
+.env
+secrets/
+firebase-service-account.json
+
+# OS/Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Render 배포 시 캐시
+*.log
+*.sqlite3
+
+# Byte-compiled / cache
+*.egg-info/
+.eggs/
