@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>영상 진료 시작</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f7f9fc;
+      padding: 40px;
+      text-align: center;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    video {
+      width: 60%;
+      max-width: 600px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>환자와 영상 진료를 시작합니다</h2>
+  <p>진료 ID: {{ consultation_id }}</p>
+  <video id="localVideo" autoplay playsinline muted></video>
+
+  <script>
+    // 기본 웹캠 연결 (WebRTC 전 단계)
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        document.getElementById("localVideo").srcObject = stream;
+      })
+      .catch(err => {
+        console.error("웹캠 접근 실패:", err);
+      });
+  </script>
+</body>
+</html>
