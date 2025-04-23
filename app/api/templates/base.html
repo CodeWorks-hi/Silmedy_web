@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title if title else "Silmedy" }}</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background-color: #f4f7f8;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 60px; /* 로고와 메뉴 사이 여백 */
+      padding: 20px 40px;
+      background: linear-gradient(to right, #a1d9d0, #d4ede8);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #035c5a;
+    }
+    .nav {
+      display: flex;
+      gap: 40px;
+    }
+    .nav a {
+      text-decoration: none;
+      font-weight: 500;
+      color: #000;
+      padding-bottom: 5px;
+    }
+    .nav a.active {
+      border-bottom: 2px solid #037971;
+    }
+    main {
+      padding: 40px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🩺 Silmedy</div>
+    <nav class="nav">
+      <a href="/doctor/consultation" class="{% if active_tab == 'consultation' %}active{% endif %}">대기환자</a>
+      <a href="/doctor/video-call/dummy" class="{% if active_tab == 'video' %}active{% endif %}">비대면진료</a>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

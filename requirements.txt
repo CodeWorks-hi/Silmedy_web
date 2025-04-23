@@ -3,3 +3,4 @@ jinja2
 firebase-admin
 uvicorn
 fastapi
+boto3

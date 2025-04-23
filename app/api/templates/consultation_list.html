@@ -1,67 +1,31 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <title>진료 대기 목록</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f9f9f9;
-      padding: 30px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background-color: white;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-    th {
-      background-color: #2980b9;
-      color: white;
-    }
-    button {
-      padding: 6px 12px;
-      background-color: #27ae60;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #219150;
-    }
-  </style>
-</head>
-<body>
-  <h2>진료 대기 중인 환자 목록</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>이름</th>
-        <th>증상</th>
-        <th>요청 시간</th>
-        <th>진료 시작</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for c in consultations %}
-      <tr>
-        <td>{{ c.patient_name }}</td>
-        <td>{{ c.symptoms }}</td>
-        <td>{{ c.requested_at }}</td>
-        <td>
-          <form action="/doctor/video-call/{{ c.consultation_id }}" method="get">
-            <button type="submit">진료 시작</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom: 20px;">대기 중인 환자 목록</h2>
+
+<table style="width:100%; background:#e6f8f6; border-collapse: collapse; border-radius: 10px; overflow: hidden;">
+  <thead>
+    <tr style="background-color:#fff; text-align:left;">
+      <th style="padding:12px;">이름</th>
+      <th style="padding:12px;">생년월일</th>
+      <th style="padding:12px;">증상</th>
+      <th style="padding:12px;">요청시간</th>
+      <th style="padding:12px;">진료시작</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in consultations %}
+    <tr>
+      <td style="padding:12px;">{{ c.name }}</td>
+      <td style="padding:12px;">{{ c.birth }}</td>
+      <td style="padding:12px;">{{ c.symptoms }}</td>
+      <td style="padding:12px;">{{ c.requested_at }}</td>
+      <td style="padding:12px;">
+        <form action="/doctor/video-call/{{ c.consultation_id }}" method="get">
+          <button style="padding:8px 16px; background-color:#56b9b0; color:white; border:none; border-radius:6px;">진료시작</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
