@@ -1,0 +1,27 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<h2>직원 등록</h2>
+
+<!-- 업로드 영역 -->
+<div style="border: 2px dashed #bbb; padding: 40px; text-align: center; border-radius: 10px; background-color: #fafafa;">
+  <p style="font-size: 18px; color: #777;">EXCEL(확장자:xlsx) 파일을 드래그하거나 클릭하여 업로드하세요</p>
+  <button style="margin-top: 20px; padding: 10px 20px; background-color: #4db6ac; border: none; color: white; border-radius: 6px;">파일 선택</button>
+</div>
+
+<!-- 샘플 테이블 안내 -->
+<div style="margin-top: 40px;">
+  <h3>등록 양식 예시</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead style="background-color: #eee;">
+      <tr>
+        <th>면허번호</th><th>진료과</th><th>이메일</th><th>연락처</th><th>휴무일</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>133326</td><td>내과</td><td>jacob@naver.com</td><td>031-228-5716</td><td>금</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

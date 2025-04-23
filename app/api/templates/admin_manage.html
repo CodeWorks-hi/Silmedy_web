@@ -1,0 +1,25 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<h2>직원 관리</h2>
+
+<!-- 직원 목록 카드 예시 -->
+<div style="display: flex; flex-wrap: wrap; gap: 20px;">
+  <div style="width: 280px; background-color: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <img src="https://randomuser.me/api/portraits/men/4.jpg" alt="프로필" style="width: 60px; height: 60px; border-radius: 50%;">
+      <div>
+        <strong>박정식</strong><br>
+        <span style="font-size: 13px; color: #555;">내과 / 남</span>
+      </div>
+    </div>
+    <div style="margin-top: 15px; font-size: 13px; color: #444;">
+      <p><strong>이메일:</strong> jacobpark@naver.com</p>
+      <p><strong>연락처:</strong> 031-228-5716</p>
+      <p><strong>학력:</strong> 건국대 의대 졸업 (2021년)</p>
+      <p><strong>휴무:</strong> 금</p>
+      <p><strong>등록일:</strong> 2022-09-08</p>
+    </div>
+    <button style="margin-top: 10px; background-color: #e57373; border: none; color: white; padding: 8px 12px; border-radius: 6px; cursor: pointer;">삭제</button>
+  </div>
+</div>
+{% endblock %}

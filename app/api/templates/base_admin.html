@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>{{ title if title else "Silmedy" }}</title>
+  <title>{{ title if title else "Silmedy Admin" }}</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -46,8 +46,8 @@
         <img src="/static/images/logo_sil.png" alt="Silmedy Admin 로고" style="height: 50px; vertical-align: middle;">
         Silmedy Admin</div>
     <nav class="nav">
-      <a href="/doctor/consultation" class="{% if active_tab == 'consultation' %}active{% endif %}">대기환자</a>
-      <a href="/doctor/video-call/dummy" class="{% if active_tab == 'video' %}active{% endif %}">비대면진료</a>
+      <a href="/admin/employees" class="{% if active_tab == 'employees' %}active{% endif %}">직원등록</a>
+      <a href="/admin/manage" class="{% if active_tab == 'manage' %}active{% endif %}">직원관리</a>
     </nav>
   </header>
 
