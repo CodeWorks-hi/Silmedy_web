@@ -1,111 +1,195 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 style="margin-bottom: 20px;">비대면 진료</h2>
+<!-- 전체 2분할 레이아웃 -->
+<div style="display: flex; gap: 20px; align-items: flex-start;">
 
-<!-- 전체 구조: 좌(진료 입력) + 우(영상) -->
-<div style="display: flex; gap: 40px; align-items: flex-start;">
-  
-  <!-- 📋 좌측 패널: 진료 정보 -->
-  <section style="flex: 2; display: flex; flex-direction: column; gap: 20px;">
-    
+  <!-- 좌측: 환자정보 + 진료 메모 -->
+  <section style="flex: 4; display: flex; flex-direction: column; gap: 20px;">
+
     <!-- 환자 정보 -->
     <div style="background:#f9f9f9; border:1px solid #ccc; padding: 16px; border-radius: 10px;">
       <h3>환자 정보</h3>
-      이름: {{ patient.name }}<br>
-      생년월일: {{ patient.birth }}<br>
-      성별: {{ patient.gender }}<br>
-      증상 부위: {{ patient.symptom_area }}<br>
-      주요 증상: {{ patient.main_symptom }}
+      <style>
+        table th, table td {
+          padding: 8px;
+        }
+      </style>
+      <table style="width: 100%; font-size: 14px; border-collapse: collapse; text-align: center;">
+        <thead style="background-color: #f0f0f0;">
+          <tr>
+            <th>이름</th>
+            <th>주민등록번호</th>
+            <th>성별</th>
+            <th>부위</th>
+            <th>증상</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ patient.name }}</td>
+            <td>{{ patient.birth }}-1231114</td>
+            <td>{{ patient.gender }}</td>
+            <td>{{ patient.symptom_area }}</td>
+            <td>{{ patient.main_symptom }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- 병명 입력 -->
-    <div style="background:#fff; border:1px solid #ccc; padding: 16px; border-radius: 10px;">
-      <label><strong>병명:</strong></label><br>
-      <input name="disease_code" placeholder="검색 또는 선택" style="width: 100%; padding: 6px;">
-      <p style="margin-top: 6px;">보험 분류: <span id="insurance_type">자동 로딩</span></p>
+    <!-- 메모 작성 -->
+    <div style="background:#eef2f3; padding: 16px; border-radius: 10px;">
+      <h3>진료 메모</h3>
+      <textarea name="memo" rows="10" style="width:100%; padding: 8px;"></textarea>
     </div>
 
-    <!-- 처방 입력 -->
-    <div style="background:#fff; border:1px solid #ccc; padding: 16px; border-radius: 10px;">
-      <label><strong>처방 약품:</strong></label><br>
-      <input name="medication_code" placeholder="약품 검색" style="width: 100%; padding: 6px;">
-      <br><br>
-      <label><strong>투약 일수:</strong></label><br>
-      <input name="days" type="number" min="1" style="width: 100%; padding: 6px;">
-      <br><br>
-      <button type="button" id="add-prescription-btn" style="padding: 8px 16px; background:#4db6ac; color:white; border:none; border-radius:4px;">등록</button>
-    </div>
+    <!-- 하단: 병명 코드, 처방 입력 및 리스트, 영상 화면 재사용 -->
+    <section style="flex: 6; display: flex; flex-direction: column; gap: 20px;">
 
-    <!-- 등록된 처방 리스트 -->
-    <div id="prescription-list" style="background:#f6f6f6; padding: 16px; border-radius: 8px;">
-      <strong>등록된 처방:</strong>
-      <div id="prescription-items"></div>
-    </div>
+      <!-- 병명 코드 + 처방 의약품 + 투약 일수 + 등록 버튼 -->
+      <div style="display: flex; gap: 10px; align-items: flex-end;">
+        <div style="flex: 1;">
+          <label for="disease_code">병명 코드</label>
+          <select name="disease_code" id="disease_code" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+            <option value="">선택</option>
+            <option value="J00">감기</option>
+            <option value="L20">아토피</option>
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label for="medication_code">처방 의약품</label>
+          <select name="medication_code" id="medication_code" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+            <option value="">약품 선택</option>
+            <option value="med001">타이레놀</option>
+            <option value="med002">세레콕시브</option>
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label for="days">투약 일수</label>
+          <input type="number" name="days" id="days" style="width: 80%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+        </div>
+        <div>
+          <button
+              type="button"
+              id="add-prescription-btn"
+              style="height: 32px; padding: 0 16px; background:#4db6ac; color:white; border:none; border-radius:6px; margin-bottom: 0px;"
+              >
+              등록
+              </button>
+        </div>
+      </div>
 
-    <!-- 진료이력 -->
-    <div style="background:#f2f2f2; padding: 16px; border-radius: 8px;">
-      <h3>진료 이력</h3>
-      마지막 진료일: {{ consultation.previous_date or "없음" }}<br>
-      이전 병명 코드: {{ consultation.previous_disease_code or "없음" }}
-    </div>
+      <!-- 처방 리스트 -->
+      <div id="prescription-list" style="background:#f6f6f6; padding: 16px; border-radius: 8px;">
+        <strong>처방 의약품 명칭</strong>
+        <style>
+          table#prescription-items th,
+          table#prescription-items td {
+            padding: 8px;
+            text-align: center;
+          }
+        </style>
+        <table id="prescription-items" style="width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 14px;">
+          <thead>
+            <tr style="background: #e0e0e0;">
+              <th>의약품코드</th>
+              <th>처방의약품명칭</th>
+              <th>1회투여량</th>
+              <th>1회투여횟수</th>
+              <th>투약일수</th>
+              <th>용법용량</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
 
-    <!-- 메모 -->
-    <div>
-      <label><strong>진료 메모</strong></label><br>
-      <textarea name="memo" rows="4" style="width:100%; padding:8px;"></textarea>
-    </div>
+      <!-- 처방전 전송 버튼 -->
+      <div style="display: flex; justify-content: center;">
+        <button disabled style="width: 33%; padding:10px; background:#ccc; color:white; border: none; border-radius: 6px;">
+          처방전 전송
+        </button>
+      </div>
 
-    <!-- 버튼들 -->
-    <div style="display:flex; gap: 20px; margin-top: 10px;">
-      <form method="post" action="/prescription/submit">
-        <input type="hidden" name="patient_id" value="{{ consultation.patient_id }}">
-        <input type="hidden" name="doctor_id" value="{{ consultation.doctor_id }}">
-        <button type="submit" style="padding:10px 20px; background:#388e3c; color:white; border:none; border-radius:6px;">처방전 전송</button>
-      </form>
-      <a href="/doctor/consultation" style="padding:10px 20px; background:#aaa; color:white; border-radius:6px; text-decoration:none;">진료 종료</a>
-    </div>
+    </section>
 
   </section>
 
-    <!-- 🎥 우측 패널: 영상 -->
-    <section style="flex: 1; position: sticky; top: 40px; align-self: flex-start;">
+  <!-- 우측: 영상 화면 (6) -->
+  <section style="flex: 6; position: sticky; top: 40px; align-self: flex-start;">
     <video id="localVideo" autoplay muted playsinline style="width:100%; border-radius:10px; border:1px solid #ccc;"></video>
     <video id="remoteVideo" autoplay playsinline style="position:absolute; top:10px; right:10px; width:120px; height:auto; border: 2px solid #fff;"></video>
     <p style="margin-top:10px; text-align:center;">영상 연결 중...</p>
-    </section>
+    <a href="/doctor/consultation"
+       style="width: 100%; margin-top: 20px; padding: 10px; background: #aaa; color: white; text-align: center; border-radius: 6px; display: block;">
+      진료 종료
+    </a>
+  </section>
+</div>
 
-<!-- 등록된 처방 리스트 추가 스크립트 -->
+
+
+
+
+<!-- 처방 리스트 스크립트 -->
 <script>
   const prescriptions = [];
 
   document.getElementById("add-prescription-btn").addEventListener("click", () => {
-    const med = document.querySelector('input[name="medication_code"]').value.trim();
-    const days = document.querySelector('input[name="days"]').value.trim();
-    const disease = document.querySelector('input[name="disease_code"]').value.trim();
+    const code = document.getElementById("medication_code").value.trim();
+    const name = getMedicationName(code); // 코드로 약품명 매핑
+    const days = document.getElementById("days").value.trim();
+    const disease = document.getElementById("disease_code").value.trim();
 
-    if (!med || !days || !disease) {
+    const medDetails = {
+      "med001": { name: "타이레놀", dosage_amount: "0.5정", dosage_times: "3", usage: "1일 3회 식후" },
+      "med002": { name: "세레콕시브", dosage_amount: "1캡슐", dosage_times: "2", usage: "1일 2회 식후" }
+    };
+
+    if (!code || !days || !disease || !medDetails[code]) {
       alert("모든 항목을 입력하세요");
       return;
     }
 
-    prescriptions.push({ medication_code: med, days: days, disease_code: disease });
+    const med = medDetails[code];
+
+    prescriptions.push({
+      medication_code: code,
+      medication_name: med.name,
+      dosage_amount: med.dosage_amount,
+      dosage_times: med.dosage_times,
+      usage: med.usage,
+      days: days
+    });
+
     renderPrescriptions();
   });
 
   function renderPrescriptions() {
-    const container = document.getElementById("prescription-items");
-    container.innerHTML = "";
+    const tbody = document.querySelector("#prescription-items tbody");
+    tbody.innerHTML = ""; // 초기화
 
-    prescriptions.forEach((item, idx) => {
-      const card = document.createElement("div");
-      card.style = "padding: 8px; margin: 8px 0; background: white; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1)";
-      card.innerHTML = `
-        <strong>약품:</strong> ${item.medication_code} |
-        <strong>투약일수:</strong> ${item.days}일 |
-        <strong>병명:</strong> ${item.disease_code}
+    prescriptions.forEach(item => {
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>${item.medication_code}</td>
+        <td>${item.medication_name}</td>
+        <td>${item.dosage_amount}</td>
+        <td>${item.dosage_times}</td>
+        <td>${item.days}</td>
+        <td>${item.usage}</td>
       `;
-      container.appendChild(card);
+
+      tbody.appendChild(row);
     });
+  }
+
+  function getMedicationName(code) {
+    const mapping = {
+      "med001": "타이레놀",
+      "med002": "세레콕시브"
+    };
+    return mapping[code] || "";
   }
 </script>
 {% endblock %}

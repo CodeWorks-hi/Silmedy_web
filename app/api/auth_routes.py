@@ -27,7 +27,7 @@ async def login_submit(
         if role == "doctor":
             return RedirectResponse(url="/doctor/consultation", status_code=302)
         elif role == "admin":
-            return RedirectResponse(url="/admin/dashboard", status_code=302)  # 아직 없음
+            return RedirectResponse(url="/admin/employees", status_code=302) # 아직 없음
     else:
         return templates.TemplateResponse("login.html", {
             "request": request,
