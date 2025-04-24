@@ -1,9 +1,9 @@
-# Firebase 연동 로직이 추가될 예정
-async def process_login(phc, role, department, password):
-    # ⚠️ 실제로는 Firebase 또는 Firestore에서 사용자 정보를 조회해야 함
-    if role == "admin" and password == "doctor123":
-        return {"message": "관리자 로그인 성공"}
-    elif role == "doctor" and department and password == "doctor123":
-        return {"message": f"{department} 의사 로그인 성공"}
+async def process_login(public_health_center: str, role: str, department: str | None, password: str) -> dict:
+    # 🔐 실제 DB 또는 Firebase 연동 처리 여기에 넣으면 됨
+    # 아래는 예시
+    if role == "doctor" and password == "닥터123":
+        return {"message": "로그인 성공"}
+    elif role == "admin" and password == "어드민123":
+        return {"message": "로그인 성공"}
     else:
-        return {"error": "로그인 실패"}
+        return {"error": "아이디 또는 비밀번호가 올바르지 않습니다."}

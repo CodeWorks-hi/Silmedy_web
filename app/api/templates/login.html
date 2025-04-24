@@ -65,9 +65,15 @@
     #departmentField {
       display: none;
     }
+
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-top: 15px;
+      text-align: center;
+    }
   </style>
   <script>
-    // 역할 선택 시 진료과 입력란 표시/숨김
     function onRoleChange() {
       const role = document.getElementById("role").value;
       document.getElementById("departmentField").style.display = role === "doctor" ? "block" : "none";
@@ -77,6 +83,11 @@
 <body>
   <div class="login-container">
     <h2>Silmedy 로그인</h2>
+
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+
     <form action="/login" method="post">
       <label for="public_health_center">보건소</label>
       <input type="text" name="public_health_center" id="public_health_center" placeholder="보건소 이름 입력" list="phc_list" required />
@@ -96,8 +107,7 @@
         <label for="department">진료과</label>
         <select name="department" id="department">
           <option value="내과">내과</option>
-          <option value="소아과">소아과</option>
-          <option value="정형외과">정형외과</option>
+          <option value="소아과">외과</option>
         </select>
       </div>
 
