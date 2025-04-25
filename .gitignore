@@ -6,7 +6,7 @@ __pycache__/
 # 환경변수 및 시크릿
 .env
 secrets/
-firebase-service-account.json
+silmedy-23a1b-firebase-adminsdk-fbsvc-1e8c6b596b.json
 
 # OS/Editor
 .DS_Store

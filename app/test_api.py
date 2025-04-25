@@ -32,7 +32,7 @@ table_diseases = dynamodb.Table("diseases")
 
 # ✅ Firebase 초기화
 if not firebase_admin._apps:
-    cred = credentials.Certificate("secrets/firebase-service-account.json")
+    cred = credentials.Certificate("secrets/silmedy-23a1b-firebase-adminsdk-fbsvc-1e8c6b596b.json")
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
