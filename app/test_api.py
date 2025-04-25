@@ -12,18 +12,18 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Path, Body
 from app.services.firebase_service import init_firebase
 
-# ✅ 환경변수 로드
+# 환경변수 로드
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
-# ✅ 환경변수에서 가져오기
+# 환경변수에서 가져오기
 aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
 aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 aws_region = os.getenv("AWS_REGION", "ap-northeast-2")
 
-FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH")  # 예: secrets/xxx.json
-FIREBASE_DB_URL = os.getenv("FIREBASE_DB_URL")  # 예: https://xxxx.firebaseio.com/
+FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH")  
+FIREBASE_DB_URL = os.getenv("FIREBASE_DB_URL")  
 
-# ✅ DynamoDB 리소스
+# DynamoDB 리소스
 dynamodb = boto3.resource(
     "dynamodb",
     region_name=aws_region,
@@ -68,13 +68,13 @@ app.add_middleware(
 def read_root():
     return {"message": "테스트 성공"}
 
-# ✅ 병원 목록 가져오기
+# 병원 목록 가져오기
 @app.get("/test/hospitals")
 def get_hospitals():
     response = table_hospitals.scan()
     return {"hospitals": response.get("Items", [])}
 
-# ✅ 의사 로그인
+# 의사 로그인
 @app.post("/test/login/doctor")
 def login_doctor(payload: dict):
     public_health_center = payload.get("public_health_center")
@@ -95,7 +95,7 @@ def login_doctor(payload: dict):
     hospital_id = items[0].get("hospital_id")
     if hospital_id is None:
         raise HTTPException(status_code=500, detail="hospital_id 누락")
-    # 🔁 Decimal → int 변환
+    #  Decimal → int 변환
     hospital_id = int(hospital_id)
 
     # 2. 의사 조회
@@ -117,12 +117,12 @@ def login_doctor(payload: dict):
     raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않거나 등록되지 않은 의사입니다.")
 
 
-# 🔐 관리자 로그인 요청 모델
+# 관리자 로그인 요청 모델
 class AdminLoginRequest(BaseModel):
     public_health_center: str
     password: str
 
-# ✅ 관리자 로그인 API
+# 관리자 로그인 API
 @app.post("/test/login/admin")
 def login_admin(data: dict):
     public_health_center = data.get("public_health_center")
@@ -151,7 +151,7 @@ def login_admin(data: dict):
         "message": "로그인 성공",
         "hospital_id": hospital_id
     }
-
+#의사 등록
 @app.post("/test/register/doctor")
 def register_doctor(data: dict):
     try:
@@ -190,7 +190,8 @@ def register_doctor(data: dict):
 
     except Exception as e:
         return {"error": str(e)}
-    
+
+#의사 목록 조회 
 @app.get("/test/doctors")
 def list_doctors():
     try:
@@ -206,6 +207,7 @@ def list_doctors():
     
 from fastapi import HTTPException, Path
 
+#의사 삭제
 @app.delete("/test/delete/doctor/{license_number}")
 def delete_doctor(license_number: str = Path(..., description="의사 면허번호(문서 ID)")):
     try:
@@ -217,7 +219,8 @@ def delete_doctor(license_number: str = Path(..., description="의사 면허번�
         return {"message": "의사 삭제 완료", "license_number": license_number}
     except Exception as e:
         return {"error": str(e)}
-    
+
+#의사 수정 
 @app.put("/test/update/doctor/{license_number}")
 def update_doctor(
     license_number: str = Path(..., description="의사 면허번호(문서 ID)"),
@@ -245,6 +248,7 @@ def update_doctor(
     except Exception as e:
         return {"error": str(e)}
     
+#질병 코드 조회
 @app.get("/test/diseases")
 def get_disease_codes():
     try:
@@ -360,3 +364,71 @@ def save_video_text(payload: dict):
     })
 
     return {"message": f"{role}의 텍스트가 저장되었습니다."}
+
+# 환자리스트 호출 
+@app.get("/test/patients")
+def list_patients():
+    try:
+        patients = firestore.client().collection("patients").stream()
+        result = []
+        for doc in patients:
+            data = doc.to_dict()
+            data["patient_id"] = doc.id 
+            result.append(data)
+        return {"patients": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+# 진료 신청 전체 목록 조회
+@app.get("/test/care-requests")
+def get_all_care_requests():
+    try:
+        table_care_requests = dynamodb.Table("care_requests")  # 🔹 테이블 객체 선언
+        response = table_care_requests.scan()
+        items = response.get("Items", [])
+        return {"care_requests": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+# 진료 대기(진료신청) 인원만 보이도록 
+@app.get("/test/care-requests/waiting")
+def get_waiting_care_requests():
+    try:
+        # 1. 진료 요청 중 대기 상태만 조회
+        table_care_requests = dynamodb.Table("care_requests")
+        response = table_care_requests.scan(
+            FilterExpression=Attr("is_solved").eq(False)
+        )
+        care_requests = response.get("Items", [])
+
+        result = []
+        for request in care_requests:
+            patient_id = request.get("patient_id")
+            if not patient_id:
+                continue
+
+            # 2. Firestore에서 환자 정보 가져오기
+            patient_doc = db.collection("patients").document(patient_id).get()
+            if not patient_doc.exists:
+                continue
+
+            patient_data = patient_doc.to_dict()
+
+            # 3. 병합 데이터 구성
+            combined = {
+                "request_id": request.get("request_id"),
+                "name": patient_data.get("name"),
+                "sign_language_needed": request.get("sign_language_needed", False),
+                "birth": patient_data.get("birth", None),
+                "department": request.get("department"),
+                "book_date": request.get("book_date"),
+                "book_hour": request.get("book_hour"),
+                "symptom_part": request.get("symptom_part", []),
+                "symptom_type": request.get("symptom_type", [])
+            }
+            result.append(combined)
+
+        return {"waiting_list": result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
