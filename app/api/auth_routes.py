@@ -15,11 +15,21 @@ ROLE_MAP = {
     "환자": "patient"
 }
 
-# 📦 JSON 요청용 모델
+# 🔒 기존 JSON용 모델 (유지)
 class LoginRequest(BaseModel):
     public_health_center: str
     role: str
     department: str | None = None
+    password: str
+
+# ✅ 역할별 분리된 모델
+class DoctorLoginRequest(BaseModel):
+    public_health_center: str
+    department: str
+    password: str
+
+class AdminLoginRequest(BaseModel):
+    public_health_center: str
     password: str
 
 # 🖥 1. 브라우저용 로그인 페이지 렌더링
@@ -36,7 +46,6 @@ async def login_form(
     department: str = Form(None),
     password: str = Form(...)
 ):
-    # 한글 role 처리
     role = ROLE_MAP.get(role, role)
 
     result = await process_login(public_health_center, role, department, password)
@@ -52,24 +61,45 @@ async def login_form(
             "error": result.get("error", "로그인 실패")
         })
 
-# 📱 3. 앱/테스트용 JSON 로그인 처리
-@router.post("/api/login")
-async def login_api(request_data: LoginRequest):
-    role = ROLE_MAP.get(request_data.role, request_data.role)
-
+# ✅ 3. 의사 로그인 (Postman/API용)
+@router.post("/api/login/doctor")
+async def login_doctor_api(data: DoctorLoginRequest):
     result = await process_login(
-        public_health_center=request_data.public_health_center,
-        role=role,
-        department=request_data.department,
-        password=request_data.password,
+        public_health_center=data.public_health_center,
+        role="doctor",
+        department=data.department,
+        password=data.password
     )
 
     if result.get("message"):
         return {
             "status_code": status.HTTP_200_OK,
             "message": result["message"],
-            "role": role,
-            "redirect_url": f"/{role}/consultation" if role == "doctor" else f"/{role}/employees"
+            "role": "doctor",
+            "redirect_url": "/doctor/consultation"
+        }
+
+    return {
+        "status_code": status.HTTP_401_UNAUTHORIZED,
+        "error": result.get("error", "로그인 실패")
+    }
+
+# ✅ 4. 관리자 로그인 (Postman/API용)
+@router.post("/api/login/admin")
+async def login_admin_api(data: AdminLoginRequest):
+    result = await process_login(
+        public_health_center=data.public_health_center,
+        role="admin",
+        department=None,
+        password=data.password
+    )
+
+    if result.get("message"):
+        return {
+            "status_code": status.HTTP_200_OK,
+            "message": result["message"],
+            "role": "admin",
+            "redirect_url": "/admin/employees"
         }
 
     return {
