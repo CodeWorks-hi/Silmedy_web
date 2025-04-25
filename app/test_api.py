@@ -5,19 +5,23 @@ import boto3
 import os
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, db as realtime_db
 from pydantic import BaseModel
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from fastapi import Path, Body
+from app.services.firebase_service import init_firebase
 
 # ✅ 환경변수 로드
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
-# ✅ AWS 자격증명
+# ✅ 환경변수에서 가져오기
 aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
 aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 aws_region = os.getenv("AWS_REGION", "ap-northeast-2")
+
+FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH")  # 예: secrets/xxx.json
+FIREBASE_DB_URL = os.getenv("FIREBASE_DB_URL")  # 예: https://xxxx.firebaseio.com/
 
 # ✅ DynamoDB 리소스
 dynamodb = boto3.resource(
@@ -30,14 +34,25 @@ dynamodb = boto3.resource(
 table_hospitals = dynamodb.Table("hospitals")
 table_diseases = dynamodb.Table("diseases")
 
-# ✅ Firebase 초기화
-if not firebase_admin._apps:
-    cred = credentials.Certificate("secrets/silmedy-23a1b-firebase-adminsdk-fbsvc-1e8c6b596b.json")
-    firebase_admin.initialize_app(cred)
 
+KST = timezone(timedelta(hours=9))
+
+# ✅ Firebase 초기화
+def init_firebase():
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': FIREBASE_DB_URL
+        })
+
+# ✅ Firebase 먼저 초기화
+init_firebase()
+
+# ✅ Firestore 인스턴스
 db = firestore.client()
 collection_doctors = db.collection("doctors")
 collection_admins = db.collection("admins")
+
 
 
 # ✅ FastAPI 인스턴스
@@ -238,3 +253,110 @@ def get_disease_codes():
         return {"diseases": items}
     except Exception as e:
         return {"error": str(e)}
+    
+
+# 1. 통화 방 생성 (Create)
+@app.post("/test/video-call/create")
+def create_video_call(payload: dict):
+    doctor_id = payload.get("doctor_id")
+    patient_id = payload.get("patient_id")
+
+    if not doctor_id or not patient_id:
+        raise HTTPException(status_code=400, detail="doctor_id와 patient_id는 필수입니다.")
+
+    KST = timezone(timedelta(hours=9))
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
+    safe_patient_id = patient_id.split("@")[0]
+    room_id = f"doctor_{doctor_id}_patient_{safe_patient_id}_{timestamp}"
+
+    # RealtimeDB 초기값
+    realtime_db.reference(f"calls/{room_id}").set({
+        "doctor_id": doctor_id,
+        "patient_id": patient_id,
+        "is_accepted": False,
+        "status": "waiting",
+        "created_at": timestamp
+    })
+
+    # Firestore 초기값
+    firestore.client().collection("calls").document(room_id).set({
+        "doctor_id": doctor_id,
+        "patient_id": patient_id,
+        "is_accepted": False,
+        "started_at": None,
+        "ended_at": None,
+        "doctor_text": [],
+        "patient_text": []
+    })
+
+    return {"message": "영상 통화방 생성 완료", "room_id": room_id}
+
+# 통화 시작 (Start)
+@app.post("/test/video-call/start")
+def start_video_call(payload: dict):
+    room_id = payload.get("room_id")
+
+    if not room_id:
+        raise HTTPException(status_code=400, detail="room_id는 필수입니다.")
+
+    KST = timezone(timedelta(hours=9))
+    now = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+
+    # Firestore 업데이트
+    firestore.client().collection("calls").document(room_id).update({
+        "started_at": now,
+        "is_accepted": True
+    })
+
+    # RealtimeDB 상태 변경
+    realtime_db.reference(f"calls/{room_id}").update({
+        "status": "accepted"
+    })
+
+    return {"message": "통화 시작 처리 완료", "started_at": now}
+
+# 통화 종료 (End)
+@app.post("/test/video-call/end")
+def end_video_call(payload: dict):
+    room_id = payload.get("room_id")
+
+    if not room_id:
+        raise HTTPException(status_code=400, detail="room_id는 필수입니다.")
+
+    KST = timezone(timedelta(hours=9))
+    now = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+
+    # Firestore 종료시간 업데이트
+    firestore.client().collection("calls").document(room_id).update({
+        "ended_at": now
+    })
+
+    # RealtimeDB 상태 변경
+    realtime_db.reference(f"calls/{room_id}").update({
+        "status": "ended"
+    })
+
+    return {"message": "통화 종료 처리 완료", "ended_at": now}
+
+
+# 실시간 텍스트 저장 (Text)
+@app.post("/test/video-call/text")
+def save_video_text(payload: dict):
+    room_id = payload.get("room_id")
+    role = payload.get("role")  # "doctor" 또는 "patient"
+    text = payload.get("text")
+
+    if not room_id or role not in ("doctor", "patient") or not text:
+        raise HTTPException(status_code=400, detail="room_id, role, text는 필수입니다.")
+
+    doc_ref = firestore.client().collection("calls").document(room_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="해당 통화 문서를 찾을 수 없습니다.")
+
+    # 텍스트 배열 업데이트
+    doc_ref.update({
+        f"{role}_text": firestore.ArrayUnion([text])
+    })
+
+    return {"message": f"{role}의 텍스트가 저장되었습니다."}

@@ -11,9 +11,11 @@ load_dotenv()
 # ✅ Firebase 초기화 함수
 def init_firebase():
     if not firebase_admin._apps:
-        cred_path = os.path.join("secrets", "firebase-service-account.json")
-        if not os.path.exists(cred_path):
-            raise FileNotFoundError("Firebase 서비스 계정 키가 없습니다.")
+        cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
+        if not cred_path or not os.path.exists(cred_path):
+            raise FileNotFoundError(f"Firebase 서비스 계정 키가 없거나 잘못된 경로입니다: {cred_path}")
 
         cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
+        firebase_admin.initialize_app(cred, {
+            "databaseURL": os.getenv("FIREBASE_DB_URL")
+        })
