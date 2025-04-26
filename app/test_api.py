@@ -537,3 +537,22 @@ def create_diagnosis_record(payload: dict):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+#  환자 진단 이력 조회 API (patient_id는 이메일)
+from fastapi import Path
+
+@app.get("/test/diagnosis/patient/{patient_id}")
+def get_diagnosis_by_patient(patient_id: str = Path(..., description="환자의 이메일")):
+    try:
+        table = dynamodb.Table("diagnosis_records")
+
+        # 이메일을 문자열로 일치시켜 조회
+        response = table.scan(
+            FilterExpression=Attr("patient_id").eq(patient_id)
+        )
+        records = response.get("Items", [])
+
+        return {"diagnosis_records": records}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
