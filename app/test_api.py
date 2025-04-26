@@ -11,6 +11,8 @@ from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 from fastapi import Path, Body
 from app.services.firebase_service import init_firebase
+import random
+from decimal import Decimal
 
 # 환경변수 로드
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
@@ -35,7 +37,16 @@ table_hospitals = dynamodb.Table("hospitals")
 table_diseases = dynamodb.Table("diseases")
 
 
+
+# 1. 한국시간
 KST = timezone(timedelta(hours=9))
+now = datetime.now(KST)
+
+# 2. 년월일_시분초
+timestamp = now.strftime("%Y%m%d_%H%M%S")
+
+# 3. 랜덤 3자리
+random_suffix = f"{random.randint(0, 999):03d}"
 
 # ✅ Firebase 초기화
 def init_firebase():
@@ -268,8 +279,6 @@ def create_video_call(payload: dict):
     if not doctor_id or not patient_id:
         raise HTTPException(status_code=400, detail="doctor_id와 patient_id는 필수입니다.")
 
-    KST = timezone(timedelta(hours=9))
-    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     safe_patient_id = patient_id.split("@")[0]
     room_id = f"doctor_{doctor_id}_patient_{safe_patient_id}_{timestamp}"
 
@@ -303,8 +312,7 @@ def start_video_call(payload: dict):
     if not room_id:
         raise HTTPException(status_code=400, detail="room_id는 필수입니다.")
 
-    KST = timezone(timedelta(hours=9))
-    now = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+
 
     # Firestore 업데이트
     firestore.client().collection("calls").document(room_id).update({
@@ -327,8 +335,7 @@ def end_video_call(payload: dict):
     if not room_id:
         raise HTTPException(status_code=400, detail="room_id는 필수입니다.")
 
-    KST = timezone(timedelta(hours=9))
-    now = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+
 
     # Firestore 종료시간 업데이트
     firestore.client().collection("calls").document(room_id).update({
@@ -429,6 +436,104 @@ def get_waiting_care_requests():
             result.append(combined)
 
         return {"waiting_list": result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+# 의약품 리스트 호출
+@app.get("/test/drugs")
+def get_all_drugs():
+    try:
+        table_drugs = dynamodb.Table("drugs")
+        response = table_drugs.scan()
+        items = response.get("Items", [])
+        return {"drugs": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 처방전리스트 호출
+@app.get("/test/prescription_records")
+def get_all_drugs():
+    try:
+        table_drugs = dynamodb.Table("prescription_records")
+        response = table_drugs.scan()
+        items = response.get("Items", [])
+        return {"prescription_records": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 처방전 등록 API
+@app.post("/test/prescriptions/create")
+def create_prescription(payload: dict):
+    try:
+        # prescription_id 생성 (ex: 20250426153045XXX)
+        prescription_id = int(f"{timestamp}{random_suffix}")
+
+        # DynamoDB 테이블 연결
+        prescription_table = dynamodb.Table("prescription_records")
+
+        # DynamoDB에 넣을 데이터
+        item = {
+            "prescription_id": prescription_id,                     # 🔥 숫자형
+            "diagnosis_id": int(payload.get("diagnosis_id")),        # 🔥 숫자형
+            "doctor_id": int(payload.get("doctor_id")),              # 🔥 숫자형
+            "medication_days": int(payload.get("medication_days")),  # 🔥 숫자형
+            "medication_list": payload.get("medication_list", []),   # 리스트 (drug_id)
+            "prescribed_at": now.strftime("%Y-%m-%d %H:%M:%S"),      # 날짜 문자열
+        }
+
+        # DynamoDB 저장
+        prescription_table.put_item(Item=item)
+
+        return {
+            "message": "처방전 저장 완료",
+            "prescription_id": prescription_id
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+#진단기록 리스트 
+@app.get("/test/diagnosis-records")
+def get_all_diagnosis_records():
+    try:
+        table_diagnosis = dynamodb.Table("diagnosis_records")
+        response = table_diagnosis.scan()
+        items = response.get("Items", [])
+        return {"diagnosis_records": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# 진단기록 저장 
+@app.post("/test/diagnosis/create")
+def create_diagnosis_record(payload: dict):
+    try:
+        diagnosis_id = int(f"{timestamp}{random_suffix}")
+
+        # 진단 일시
+        diagnosed_at = now.strftime("%Y-%m-%d %H:%M:%S")
+
+        # DynamoDB 테이블 객체
+        diagnosis_table = dynamodb.Table("diagnosis_records")
+
+        # 저장할 데이터
+        item = {
+            "diagnosis_id": diagnosis_id,
+            "doctor_id": payload.get("doctor_id"),
+            "patient_id": payload.get("patient_id"),
+            "disease_code": payload.get("disease_code"),
+            "diagnosis_text": payload.get("diagnosis_text", ""),
+            "diagnosed_at": diagnosed_at
+        }
+
+        # DynamoDB에 저장
+        diagnosis_table.put_item(Item=item)
+
+        return {
+            "message": "진단 기록 저장 완료",
+            "diagnosis_id": diagnosis_id
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
