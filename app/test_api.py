@@ -374,7 +374,7 @@ def get_waiting_care_requests():
             if not patient_id:
                 continue
 
-            patient_doc = db.collection("patients").document(patient_id).get()
+            patient_doc = db.collection("patients").document(str(patient_id)).get()
             if not patient_doc.exists:
                 continue
 
