@@ -62,8 +62,7 @@ collection_admins = db.collection("admins")
 
 # FastAPI 인스턴스 (✨ 스웨거 문서 설정 추가)
 app = FastAPI(
-    title="Silmedy 테스트 서버 API",
-    description="실메디 개발용 테스트 서버입니다. (로그인, 환자, 진료 요청, 영상통화 등 관리)",
+    title="Silmedy 관리자/의사 서버 API",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -78,11 +77,6 @@ app.add_middleware(
 )
 
 # API 시작
-
-@app.get("/", summary="루트 테스트", description="서버 기본 테스트 API입니다.")
-def read_root():
-    return {"message": "테스트 성공"}
-
 @app.get("/test/hospitals", summary="병원 목록 조회", description="DynamoDB에서 모든 병원 정보를 가져옵니다.")
 def get_hospitals():
     response = table_hospitals.scan()
