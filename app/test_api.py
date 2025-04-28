@@ -490,4 +490,3 @@ def get_diagnosis_by_patient(patient_id: str = Path(..., description="환자의 
         return {"diagnosis_records": response.get("Items", [])}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
