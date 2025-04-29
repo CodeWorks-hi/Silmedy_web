@@ -64,7 +64,7 @@ collection_admins = db.collection("admins")
 
 # FastAPI 인스턴스 (스웨거 문서 설정 추가)
 app = FastAPI(
-    title="Silmedy 관리자/의사 서버 API.",
+    title="Silmedy 관리자 / 의사 서버 API ",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
