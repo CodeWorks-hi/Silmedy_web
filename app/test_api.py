@@ -12,6 +12,9 @@ from datetime import datetime, timedelta, timezone
 import random
 from decimal import Decimal
 from fastapi import Path
+from pydantic import BaseModel
+from typing import Optional
+
 
 
 # 환경변수 로드
@@ -77,7 +80,7 @@ app.add_middleware(
 )
 
 
-# DynamoDB Decimal -> int/float 변환
+# 🔵 DynamoDB Decimal -> int/float 변환
 def decimal_to_native(obj):
     if isinstance(obj, list):
         return [decimal_to_native(item) for item in obj]
@@ -98,14 +101,24 @@ def get_hospitals():
     response = table_hospitals.scan()
     return {"hospitals": response.get("Items", [])}
 
-@app.post("/test/login/doctor", summary="의사 로그인", description="보건소명, 진료과, 비밀번호를 입력하여 의사 계정으로 로그인합니다.")
-def login_doctor(payload: dict):
-    public_health_center = payload.get("public_health_center")
-    department = payload.get("department")
-    password = payload.get("password")
 
-    if not (public_health_center and department and password):
-        raise HTTPException(status_code=400, detail="입력값이 부족합니다.")
+# 🔵 의사 로그인 요청 모델
+class DoctorLoginRequest(BaseModel):
+    public_health_center: str
+    department: str
+    password: str
+
+# 🔵 관리자 로그인 요청 모델
+class AdminLoginRequest(BaseModel):
+    public_health_center: str
+    password: str
+
+# 🔵 의사 로그인 API
+@app.post("/test/login/doctor", summary="의사 로그인", description="보건소명, 진료과, 비밀번호를 입력하여 의사 계정으로 로그인합니다.")
+def login_doctor(payload: DoctorLoginRequest):
+    public_health_center = payload.public_health_center
+    department = payload.department
+    password = payload.password
 
     response = table_hospitals.scan(
         FilterExpression=Attr("name").eq(public_health_center)
@@ -130,14 +143,11 @@ def login_doctor(payload: dict):
 
     raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않거나 등록되지 않은 의사입니다.")
 
-class AdminLoginRequest(BaseModel):
-    public_health_center: str
-    password: str
-
+# 🔵 관리자 로그인 API
 @app.post("/test/login/admin", summary="관리자 로그인", description="보건소명을 통해 관리자 계정으로 로그인합니다.")
-def login_admin(data: dict):
-    public_health_center = data.get("public_health_center")
-    password = data.get("password")
+def login_admin(payload: AdminLoginRequest):
+    public_health_center = payload.public_health_center
+    password = payload.password
 
     response = table_hospitals.scan(
         FilterExpression=Attr("name").eq(public_health_center)
@@ -161,10 +171,21 @@ def login_admin(data: dict):
         "hospital_id": hospital_id
     }
 
+# 🔵 의사 등록 요청 모델
+class DoctorRegisterRequest(BaseModel):
+    hospital_name: str
+    name: str
+    email: str
+    password: str
+    department: str
+    contact: str
+    gender: Optional[str] = ""
+
+# 🔵 의사 등록 API
 @app.post("/test/register/doctor", summary="의사 등록", description="보건소를 선택하여 새 의사 계정을 등록합니다.")
-def register_doctor(data: dict):
+def register_doctor(payload: DoctorRegisterRequest):
     try:
-        hospital_name = data.get("hospital_name")
+        hospital_name = payload.hospital_name
         response = table_hospitals.scan(
             FilterExpression=Attr("name").eq(hospital_name)
         )
@@ -179,12 +200,12 @@ def register_doctor(data: dict):
 
         collection_doctors.document(license_number).set({
             "hospital_id": hospital_id,
-            "name": data["name"],
-            "email": data["email"],
-            "password": data["password"],
-            "department": data["department"],
-            "contact": data["contact"],
-            "gender": data.get("gender", ""),
+            "name": payload.name,
+            "email": payload.email,
+            "password": payload.password,
+            "department": payload.department,
+            "contact": payload.contact,
+            "gender": payload.gender,
             "profile_url": default_profile_url,
             "bio": [],
             "availability": {},
@@ -223,25 +244,38 @@ def delete_doctor(license_number: str = Path(..., description="의사 면허번�
     except Exception as e:
         return {"error": str(e)}
 
+from typing import Optional
+from pydantic import BaseModel
+
+# 🔵 의사 수정 요청 모델
+class DoctorUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    department: Optional[str] = None
+    contact: Optional[str] = None
+    gender: Optional[str] = None
+    bio: Optional[list] = None
+    availability: Optional[dict] = None
+    profile_url: Optional[str] = None
+
+# 🔵 의사 수정 API
 @app.put("/test/update/doctor/{license_number}", summary="의사 정보 수정", description="의사 면허번호를 기준으로 의사 정보를 수정합니다.")
 def update_doctor(
     license_number: str = Path(..., description="의사 면허번호(문서 ID)"),
-    data: dict = Body(...)
+    payload: DoctorUpdateRequest = Body(...)
 ):
     try:
         doc_ref = collection_doctors.document(license_number)
         if not doc_ref.get().exists:
             raise HTTPException(status_code=404, detail="의사를 찾을 수 없습니다.")
 
-        update_fields = {
-            key: value for key, value in data.items()
-            if key in ["name", "email", "department", "contact", "gender", "bio", "availability", "profile_url"]
-        }
+        update_fields = payload.dict(exclude_unset=True)  # ❗ 실제 수정된 값만 추출
 
         if not update_fields:
             raise HTTPException(status_code=400, detail="수정할 필드가 없습니다.")
 
         doc_ref.update(update_fields)
+
         return {"message": "의사 정보 수정 완료", "updated_fields": update_fields}
     except Exception as e:
         return {"error": str(e)}
@@ -257,11 +291,15 @@ def get_disease_codes():
 # (이하 통화 생성, 통화 시작, 통화 종료, 텍스트 저장, 환자목록 조회 등 전부 같은 방식으로 summary/description 추가 가능)
     
 
-# 1. 통화 방 생성 (Create)
+# 🔵 영상통화 생성 요청 모델
+class VideoCallCreateRequest(BaseModel):
+    doctor_id: str
+    patient_id: str
+
 @app.post("/test/video-call/create", summary="영상 통화방 생성", description="doctor_id와 patient_id를 입력받아 새로운 영상통화방을 생성합니다.")
-def create_video_call(payload: dict):
-    doctor_id = payload.get("doctor_id")
-    patient_id = payload.get("patient_id")
+def create_video_call(payload: VideoCallCreateRequest):
+    doctor_id = payload.doctor_id
+    patient_id = payload.patient_id
 
     if not doctor_id or not patient_id:
         raise HTTPException(status_code=400, detail="doctor_id와 patient_id는 필수입니다.")
@@ -289,62 +327,82 @@ def create_video_call(payload: dict):
 
     return {"message": "영상 통화방 생성 완료", "room_id": room_id}
 
-# 통화 시작 (Start)
+# 🔵 통화 시작 요청 모델
+class VideoCallStartRequest(BaseModel):
+    room_id: str
+
 @app.post("/test/video-call/start", summary="영상 통화 시작", description="room_id를 통해 통화를 시작 처리합니다.")
-def start_video_call(payload: dict):
-    room_id = payload.get("room_id")
+def start_video_call(payload: VideoCallStartRequest):
+    try:
+        room_id = payload.room_id
 
-    if not room_id:
-        raise HTTPException(status_code=400, detail="room_id는 필수입니다.")
+        if not room_id:
+            raise HTTPException(status_code=400, detail="room_id는 필수입니다.")
 
-    firestore.client().collection("calls").document(room_id).update({
-        "started_at": now,
-        "is_accepted": True
-    })
+        firestore.client().collection("calls").document(room_id).update({
+            "started_at": now,
+            "is_accepted": True
+        })
 
-    realtime_db.reference(f"calls/{room_id}").update({
-        "status": "accepted"
-    })
+        realtime_db.reference(f"calls/{room_id}").update({
+            "status": "accepted"
+        })
 
-    return {"message": "통화 시작 처리 완료", "started_at": now}
+        return {"message": "통화 시작 처리 완료", "started_at": now}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# 통화 종료 (End)
+# 🔵 통화 종료 요청 모델
+class VideoCallEndRequest(BaseModel):
+    room_id: str
+
 @app.post("/test/video-call/end", summary="영상 통화 종료", description="room_id를 통해 통화를 종료 처리합니다.")
-def end_video_call(payload: dict):
-    room_id = payload.get("room_id")
+def end_video_call(payload: VideoCallEndRequest):
+    try:
+        room_id = payload.room_id
 
-    if not room_id:
-        raise HTTPException(status_code=400, detail="room_id는 필수입니다.")
+        if not room_id:
+            raise HTTPException(status_code=400, detail="room_id는 필수입니다.")
 
-    firestore.client().collection("calls").document(room_id).update({
-        "ended_at": now
-    })
+        firestore.client().collection("calls").document(room_id).update({
+            "ended_at": now
+        })
 
-    realtime_db.reference(f"calls/{room_id}").update({
-        "status": "ended"
-    })
+        realtime_db.reference(f"calls/{room_id}").update({
+            "status": "ended"
+        })
 
-    return {"message": "통화 종료 처리 완료", "ended_at": now}
+        return {"message": "통화 종료 처리 완료", "ended_at": now}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# 실시간 텍스트 저장 (Text)
+# 🔵 텍스트 저장 요청 모델
+class VideoCallTextRequest(BaseModel):
+    room_id: str
+    role: str
+    text: str
+
 @app.post("/test/video-call/text", summary="영상 통화 중 실시간 텍스트 저장", description="room_id, role(doctor), text를 받아서 텍스트 내용을 저장합니다.")
-def save_video_text(payload: dict):
-    room_id = payload.get("room_id")
-    role = payload.get("role")
-    text = payload.get("text")
+def save_video_text(payload: VideoCallTextRequest):
+    try:
+        room_id = payload.room_id
+        role = payload.role
+        text = payload.text
 
-    if not room_id or role not in ("doctor") or not text:
-        raise HTTPException(status_code=400, detail="room_id, role, text는 필수입니다.")
+        if not room_id or role not in ("doctor") or not text:
+            raise HTTPException(status_code=400, detail="room_id, role, text는 필수입니다.")
 
-    doc_ref = firestore.client().collection("calls").document(room_id)
-    if not doc_ref.get().exists:
-        raise HTTPException(status_code=404, detail="해당 통화 문서를 찾을 수 없습니다.")
+        doc_ref = firestore.client().collection("calls").document(room_id)
+        if not doc_ref.get().exists:
+            raise HTTPException(status_code=404, detail="해당 통화 문서를 찾을 수 없습니다.")
 
-    doc_ref.update({
-        f"{role}_text": firestore.ArrayUnion([text])
-    })
+        doc_ref.update({
+            f"{role}_text": firestore.ArrayUnion([text])
+        })
 
-    return {"message": f"{role}의 텍스트가 저장되었습니다."}
+        return {"message": f"{role}의 텍스트가 저장되었습니다."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 환자리스트 호출 
 @app.get("/test/patients", summary="환자 목록 조회", description="Firestore에서 등록된 모든 환자 목록을 가져옵니다.")
@@ -432,28 +490,28 @@ def get_all_prescriptions():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 처방전 등록 API
+# 🔵 처방전 요청 모델
+class PrescriptionCreateRequest(BaseModel):
+    diagnosis_id: int
+    doctor_id: int
+    medication_days: int
+    medication_list: list[str]
+
 @app.post("/test/prescriptions/create", summary="처방전 등록", description="진단 ID와 약 리스트를 받아 새로운 처방전을 등록합니다.")
-def create_prescription(payload: dict):
+def create_prescription(payload: PrescriptionCreateRequest):
     try:
         prescription_id = int(f"{timestamp}{random_suffix}")
-
         prescription_table = dynamodb.Table("prescription_records")
         item = {
             "prescription_id": prescription_id,
-            "diagnosis_id": int(payload.get("diagnosis_id")),
-            "doctor_id": int(payload.get("doctor_id")),
-            "medication_days": int(payload.get("medication_days")),
-            "medication_list": payload.get("medication_list", []),
+            "diagnosis_id": payload.diagnosis_id,
+            "doctor_id": payload.doctor_id,
+            "medication_days": payload.medication_days,
+            "medication_list": payload.medication_list,
             "prescribed_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         }
-
         prescription_table.put_item(Item=item)
-
-        return {
-            "message": "처방전 저장 완료",
-            "prescription_id": prescription_id
-        }
+        return {"message": "처방전 저장 완료", "prescription_id": prescription_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -468,29 +526,29 @@ def get_all_diagnosis_records():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 진단기록 저장 
+# 🔵 진단 요청 모델
+class DiagnosisCreateRequest(BaseModel):
+    doctor_id: int
+    patient_id: str
+    disease_code: str
+    diagnosis_text: str = ""
+
 @app.post("/test/diagnosis/create", summary="진단 기록 등록", description="새로운 진단 기록을 등록합니다.")
-def create_diagnosis_record(payload: dict):
+def create_diagnosis_record(payload: DiagnosisCreateRequest):
     try:
         diagnosis_id = int(f"{timestamp}{random_suffix}")
         diagnosed_at = now.strftime("%Y-%m-%d %H:%M:%S")
-
         diagnosis_table = dynamodb.Table("diagnosis_records")
         item = {
             "diagnosis_id": diagnosis_id,
-            "doctor_id": payload.get("doctor_id"),
-            "patient_id": payload.get("patient_id"),
-            "disease_code": payload.get("disease_code"),
-            "diagnosis_text": payload.get("diagnosis_text", ""),
+            "doctor_id": payload.doctor_id,
+            "patient_id": payload.patient_id,
+            "disease_code": payload.disease_code,
+            "diagnosis_text": payload.diagnosis_text,
             "diagnosed_at": diagnosed_at
         }
-
         diagnosis_table.put_item(Item=item)
-
-        return {
-            "message": "진단 기록 저장 완료",
-            "diagnosis_id": diagnosis_id
-        }
+        return {"message": "진단 기록 저장 완료", "diagnosis_id": diagnosis_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
