@@ -79,6 +79,7 @@ app.add_middleware(
 )
 
 
+
 # 🔵 DynamoDB Decimal -> int/float 변환
 def decimal_to_native(obj):
     if isinstance(obj, list):
