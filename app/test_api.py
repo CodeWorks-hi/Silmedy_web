@@ -174,6 +174,7 @@ def login_admin(payload: AdminLoginRequest):
 # 🔵 의사 등록 요청 모델
 class DoctorRegisterRequest(BaseModel):
     hospital_name: str
+    license_number: str
     name: str
     email: str
     password: str
@@ -195,7 +196,7 @@ def register_doctor(payload: DoctorRegisterRequest):
 
         hospital_id = int(items[0].get("hospital_id"))
 
-        license_number = str(uuid4().int)[:6]
+        license_number = payload.license_number  # 🔵 요청받은 값 사용 (랜덤 생성X)
         default_profile_url = "https://cdn-icons-png.flaticon.com/512/3870/3870822.png"
 
         collection_doctors.document(license_number).set({
