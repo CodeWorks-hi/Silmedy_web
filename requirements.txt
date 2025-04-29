@@ -4,5 +4,5 @@ firebase-admin
 uvicorn
 fastapi
 boto3
-pydantic
+
 

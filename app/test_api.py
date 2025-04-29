@@ -12,7 +12,6 @@ from datetime import datetime, timedelta, timezone
 import random
 from decimal import Decimal
 from fastapi import Path
-from pydantic import BaseModel
 from typing import Optional
 
 
@@ -63,9 +62,9 @@ db = firestore.client()
 collection_doctors = db.collection("doctors")
 collection_admins = db.collection("admins")
 
-# FastAPI 인스턴스 (✨ 스웨거 문서 설정 추가)
+# FastAPI 인스턴스 (스웨거 문서 설정 추가)
 app = FastAPI(
-    title="Silmedy 관리자/의사 서버 API",
+    title="Silmedy 관리자/의사 서버 API.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
