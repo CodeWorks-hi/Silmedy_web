@@ -76,6 +76,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# DynamoDB Decimal -> int/float 변환
+def decimal_to_native(obj):
+    if isinstance(obj, list):
+        return [decimal_to_native(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {k: decimal_to_native(v) for k, v in obj.items()}
+    elif isinstance(obj, Decimal):
+        if obj % 1 == 0:
+            return int(obj)
+        else:
+            return float(obj)
+    else:
+        return obj
+    
+
 # API 시작
 @app.get("/test/hospitals", summary="병원 목록 조회", description="DynamoDB에서 모든 병원 정보를 가져옵니다.")
 def get_hospitals():
@@ -354,12 +370,16 @@ def get_all_care_requests():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-# 진료 대기(진료신청) 인원만 보이도록 
+# 진료 대기(진료신청) 인원만 보이도록
 @app.get("/test/care-requests/waiting", summary="진료 대기 목록 조회", description="대기 중인 진료 요청만 조회하여 환자 정보와 함께 반환합니다.")
-def get_waiting_care_requests():
+def get_waiting_care_requests_test(doctor_id: int):
     try:
+        db = firestore.client()  # ✅ firestore client 초기화
+
         table_care_requests = dynamodb.Table("care_requests")
-        response = table_care_requests.scan(FilterExpression=Attr("is_solved").eq(False))
+        response = table_care_requests.scan(
+            FilterExpression=Attr("is_solved").eq(False) & Attr("doctor_id").eq(doctor_id)
+        )
         care_requests = response.get("Items", [])
 
         result = []
@@ -378,7 +398,7 @@ def get_waiting_care_requests():
                 "request_id": request.get("request_id"),
                 "name": patient_data.get("name"),
                 "sign_language_needed": request.get("sign_language_needed", False),
-                "birth": patient_data.get("birth", None),
+                "birth_date": patient_data.get("birth_date", None),  # 🔵 birth -> birth_date 매칭
                 "department": request.get("department"),
                 "book_date": request.get("book_date"),
                 "book_hour": request.get("book_hour"),
@@ -387,7 +407,7 @@ def get_waiting_care_requests():
             }
             result.append(combined)
 
-        return {"waiting_list": result}
+        return {"waiting_list": decimal_to_native(result)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
